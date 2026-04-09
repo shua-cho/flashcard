@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flashcards</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body.theme-dark {
+  --bg: #111; --surface: #1c1c1c; --surface2: #252525;
+  --border: #2e2e2e; --text: #f0f0f0; --text2: #555;
+  --accent: #e2ff5a; --accent-text: #111;
+}
+body.theme-light {
+  --bg: #f5f5f3; --surface: #ffffff; --surface2: #efefed;
+  --border: #e0e0dc; --text: #1a1a1a; --text2: #aaa;
+  --accent: #1a1a1a; --accent-text: #fff;
+}
+body.theme-pink {
+  --bg: #fdf0f5; --surface: #fff5f8; --surface2: #fce8f0;
+  --border: #f5d0e0; --text: #2a1a20; --text2: #c498aa;
+  --accent: #e8407a; --accent-text: #fff;
+}
+
+body {
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  background: var(--bg); color: var(--text); min-height: 100vh;
+  transition: background .25s, color .25s;
+}
+
+/* HEADER */
+.hdr {
+  position: sticky; top: 0; z-index: 200;
+  background: var(--bg); border-bottom: 1px solid var(--border);
+  padding: 0 20px; height: 50px;
+  display: flex; align-items: center; justify-content: space-between;
+  transition: background .25s, border-color .25s;
+}
+.logo { font-size: 14px; font-weight: 700; letter-spacing: -.3px; }
+.hdr-right { display: flex; align-items: center; gap: 8px; }
+.theme-dots {
+  display: flex; gap: 5px; background: var(--surface2);
+  border: 1px solid var(--border); border-radius: 20px; padding: 4px 6px;
+}
+.tdot {
+  width: 14px; height: 14px; border-radius: 50%; cursor: pointer;
+  border: 2px solid transparent; transition: border-color .15s, transform .15s;
+}
+.tdot:hover { transform: scale(1.2); }
+.tdot.on { border-color: var(--text); }
+.tdot.dark  { background: #222; }
+.tdot.light { background: #eee; border: 2px solid #ccc; }
+.tdot.pink  { background: #e8407a; }
+
+/* BUTTONS */
+.btn {
+  border: none; cursor: pointer; font-family: inherit;
+  border-radius: 7px; font-size: 12px; font-weight: 500;
+  transition: all .15s; display: inline-flex; align-items: center; gap: 4px;
+}
+.btn-a { background: var(--accent); color: var(--accent-text); padding: 8px 16px; }
+.btn-a:hover { opacity: .85; transform: translateY(-1px); }
+.btn-g { background: transparent; color: var(--text2); border: 1px solid var(--border); padding: 7px 13px; }
+.btn-g:hover { color: var(--text); border-color: var(--text2); }
+.btn-ic {
+  background: var(--surface2); color: var(--text2); border: 1px solid var(--border);
+  width: 30px; height: 30px; border-radius: 7px; padding: 0; font-size: 14px; justify-content: center;
+}
+.btn-ic:hover { color: var(--text); }
+.btn-del { background: transparent; color: #e05; border: 1px solid transparent; padding: 5px 9px; font-size: 12px; border-radius: 6px; }
+.btn-del:hover { background: #fff0f3; border-color: #fdd; }
+body.theme-dark .btn-del:hover { background: #2a1020; border-color: #3a1020; }
+
+/* PAGES */
+.page { display: none; padding: 24px 20px; max-width: 700px; margin: 0 auto; }
+.page.active { display: block; }
+
+/* ── LIST PAGE ── */
+.list-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 18px; flex-wrap: wrap; gap: 8px;
+}
+.card-count { font-size: 12px; color: var(--text2); }
+
+.clist { display: flex; flex-direction: column; }
+
+.crow {
+  display: flex; align-items: center; gap: 12px;
+  border-bottom: 1px solid var(--border); padding: 10px 0;
+}
+.crow:first-of-type { border-top: 1px solid var(--border); }
+.crow-num { font-size: 11px; color: var(--text2); min-width: 22px; flex-shrink: 0; }
+.crow-prev {
+  flex: 1; font-size: 13px; cursor: pointer; min-width: 0;
+  display: flex; align-items: center; gap: 8px;
+}
+.crow-prev:hover .crow-label { color: var(--accent); }
+.crow-label {
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  transition: color .15s;
+}
+.crow-thumb {
+  width: 36px; height: 36px; border-radius: 5px; object-fit: cover;
+  flex-shrink: 0; border: 1px solid var(--border);
+}
+.crow-acts { display: flex; gap: 5px; flex-shrink: 0; }
+
+/* + button between rows */
+.add-btn-row {
+  display: flex; justify-content: center; padding: 2px 0;
+  opacity: 0; transition: opacity .2s;
+}
+.crow:hover + .add-btn-row,
+.add-btn-row:hover { opacity: 1; }
+.add-inline {
+  background: var(--surface2); border: 1px solid var(--border);
+  color: var(--text2); border-radius: 50%; width: 22px; height: 22px;
+  font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+}
+.add-inline:hover { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+
+.empty { text-align: center; padding: 70px 20px; color: var(--text2); }
+.empty-ico { font-size: 36px; margin-bottom: 10px; }
+.empty p { font-size: 13px; line-height: 1.8; }
+
+/* ── EDIT PAGE ── */
+.edit-hdr { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; }
+.edit-ttl { font-size: 18px; font-weight: 600; }
+
+.faces-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;
+}
+@media(max-width: 520px) { .faces-grid { grid-template-columns: 1fr; } }
+
+.face-panel {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 18px;
+}
+.face-lbl {
+  font-size: 9px; font-weight: 800; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--text2); margin-bottom: 14px;
+}
+
+/* toggle: text / image */
+.type-toggle {
+  display: flex; gap: 6px; margin-bottom: 12px;
+}
+.toggle-btn {
+  flex: 1; padding: 6px; font-size: 11px; font-family: inherit; font-weight: 600;
+  border-radius: 6px; cursor: pointer; border: 1px solid var(--border);
+  background: transparent; color: var(--text2); transition: all .15s;
+}
+.toggle-btn.active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+
+.face-input-area { min-height: 100px; }
+
+.face-textarea {
+  width: 100%; background: var(--bg); color: var(--text);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px 12px; font-size: 13px; font-family: inherit;
+  resize: vertical; min-height: 100px; transition: border-color .15s; line-height: 1.6;
+}
+.face-textarea:focus { outline: none; border-color: var(--accent); }
+
+.img-area {
+  border: 2px dashed var(--border); border-radius: 8px;
+  padding: 20px 16px; text-align: center; cursor: pointer;
+  position: relative; transition: border-color .15s; min-height: 100px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+}
+.img-area:hover { border-color: var(--accent); }
+.img-area input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.img-hint { font-size: 11px; color: var(--text2); }
+.img-prev {
+  max-width: 100%; max-height: 130px; border-radius: 6px;
+  object-fit: contain; display: block;
+}
+.img-rm {
+  font-size: 11px; color: #e05; background: none; border: none;
+  cursor: pointer; position: relative; z-index: 1;
+}
+
+.edit-acts { display: flex; gap: 8px; }
+.edit-acts .btn { flex: 1; justify-content: center; padding: 11px; font-size: 13px; }
+
+/* ── STUDY PAGE ── */
+.study-hdr { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+.prog-wrap { flex: 1; }
+.prog-txt { font-size: 11px; color: var(--text2); margin-bottom: 4px; }
+.prog-bar { height: 2px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.prog-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width .4s; }
+
+/* FLIP CARD */
+.flip-scene {
+  perspective: 1200px; margin-bottom: 14px; cursor: pointer;
+}
+.flip-card {
+  position: relative; width: 100%; min-height: 300px;
+  transform-style: preserve-3d;
+  transition: transform .55s cubic-bezier(.4, 0, .2, 1);
+}
+.flip-card.flipped { transform: rotateY(180deg); }
+
+.flip-face {
+  position: absolute; top: 0; left: 0; width: 100%; min-height: 300px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 16px; backface-visibility: hidden;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 32px 28px;
+}
+.flip-back { transform: rotateY(180deg); }
+
+.ftag {
+  position: absolute; top: 16px; left: 20px;
+  font-size: 9px; font-weight: 800; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--text2);
+}
+.ftag.b { color: var(--accent); }
+
+.face-text {
+  font-size: 18px; font-weight: 500; text-align: center;
+  line-height: 1.55; word-break: break-word;
+}
+.face-img {
+  max-width: 100%; max-height: 220px;
+  border-radius: 10px; object-fit: contain; display: block;
+}
+
+.flip-hint { font-size: 10px; color: var(--text2); text-align: center; margin-bottom: 10px; letter-spacing: .5px; }
+
+.study-nav { display: flex; gap: 8px; }
+.study-nav .btn { flex: 1; justify-content: center; padding: 12px; font-size: 13px; }
+
+/* RESULT */
+.result {
+  display: none; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; padding: 48px 24px; text-align: center; margin-bottom: 16px;
+}
+.result.show { display: block; }
+.result h2 { font-size: 22px; font-weight: 700; margin: 10px 0 5px; }
+.result p { color: var(--text2); font-size: 12px; }
+.result-acts { display: flex; gap: 8px; margin-top: 16px; justify-content: center; }
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body class="theme-dark">
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="logo">📇 Flashcards</div>
+  <div class="hdr-right">
+    <div class="theme-dots">
+      <div class="tdot dark on" data-t="theme-dark"></div>
+      <div class="tdot light" data-t="theme-light"></div>
+      <div class="tdot pink"  data-t="theme-pink"></div>
+    </div>
+    <button class="btn btn-g" id="navList">↩</button>
+    <button class="btn btn-a" id="navAdd">+ Add</button>
+  </div>
+</div>
+
+<!-- LIST PAGE -->
+<div class="page active" id="pgList">
+  <div class="list-bar">
+    <span class="card-count" id="cCount">0 cards</span>
+    <div style="display:flex;gap:6px;">
+      <button class="btn btn-g" id="btnShuffle">🔀 Shuffle</button>
+      <button class="btn btn-a" id="btnStudyAll">▶ Study All</button>
+    </div>
+  </div>
+  <div class="clist" id="cList"></div>
+</div>
+
+<!-- EDIT PAGE -->
+<div class="page" id="pgEdit">
+  <div class="edit-hdr">
+    <button class="btn btn-ic" id="editBack">←</button>
+    <div class="edit-ttl" id="editTtl">New Card</div>
+  </div>
+
+  <div class="faces-grid">
+    <!-- FRONT -->
+    <div class="face-panel">
+      <div class="face-lbl">Front</div>
+      <div class="type-toggle">
+        <button class="toggle-btn active" id="fToggleText" onclick="setFaceType('f','text')">T Text</button>
+        <button class="toggle-btn"        id="fToggleImg"  onclick="setFaceType('f','image')">🖼 Image</button>
+      </div>
+      <div class="face-input-area" id="fInput"></div>
+    </div>
+    <!-- BACK -->
+    <div class="face-panel">
+      <div class="face-lbl">Back</div>
+      <div class="type-toggle">
+        <button class="toggle-btn active" id="bToggleText" onclick="setFaceType('b','text')">T Text</button>
+        <button class="toggle-btn"        id="bToggleImg"  onclick="setFaceType('b','image')">🖼 Image</button>
+      </div>
+      <div class="face-input-area" id="bInput"></div>
+    </div>
+  </div>
+
+  <div class="edit-acts">
+    <button class="btn btn-g" id="cancelEdit">Cancel</button>
+    <button class="btn btn-a" id="saveCard">Save ✓</button>
+  </div>
+</div>
+
+<!-- STUDY PAGE -->
+<div class="page" id="pgStudy">
+  <div class="study-hdr">
+    <button class="btn btn-ic" id="studyBack">←</button>
+    <div class="prog-wrap">
+      <div class="prog-txt" id="progTxt">1 / 1</div>
+      <div class="prog-bar"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
+    </div>
+  </div>
+
+  <div class="result" id="result">
+    <div style="font-size:36px;">✨</div>
+    <h2>Done!</h2>
+    <p id="resultSub"></p>
+    <div class="result-acts">
+      <button class="btn btn-g" id="toList">↩ List</button>
+      <button class="btn btn-a" id="restartBtn">↺ Again</button>
+    </div>
+  </div>
+
+  <div id="studyWrap">
+    <div class="flip-hint">tap to flip</div>
+    <div class="flip-scene" onclick="flipCard()">
+      <div class="flip-card" id="flipCard">
+        <div class="flip-face">
+          <div class="ftag">Front</div>
+          <div id="sFront"></div>
+        </div>
+        <div class="flip-face flip-back">
+          <div class="ftag b">Back</div>
+          <div id="sBack"></div>
+        </div>
+      </div>
+    </div>
+    <div class="study-nav">
+      <button class="btn btn-g" id="prevBtn" disabled>← Prev</button>
+      <button class="btn btn-a" id="nextBtn">Next →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── STATE ──
+let cards = JSON.parse(localStorage.getItem('fc4') || '[]');
+let editId = null, insertAt = null;
+let fType = 'text', bType = 'text';
+let fImgData = '', bImgData = '';
+let deck = [], di = 0;
+
+const save = () => localStorage.setItem('fc4', JSON.stringify(cards));
+const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+// ── THEME ──
+const savedTheme = localStorage.getItem('fc4_theme') || 'theme-dark';
+document.body.className = savedTheme;
+document.querySelectorAll('.tdot').forEach(d => {
+  d.classList.toggle('on', d.dataset.t === savedTheme);
+  d.addEventListener('click', () => {
+    document.body.className = d.dataset.t;
+    localStorage.setItem('fc4_theme', d.dataset.t);
+    document.querySelectorAll('.tdot').forEach(x => x.classList.remove('on'));
+    d.classList.add('on');
+  });
+});
+
+// ── NAV ──
+const showPg = id => {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+};
+document.getElementById('navList').onclick   = () => { showPg('pgList'); renderList(); };
+document.getElementById('navAdd').onclick    = () => openEdit(null, null);
+document.getElementById('editBack').onclick  = () => { showPg('pgList'); renderList(); };
+document.getElementById('cancelEdit').onclick= () => { showPg('pgList'); renderList(); };
+document.getElementById('studyBack').onclick = () => { showPg('pgList'); renderList(); };
+document.getElementById('toList').onclick    = () => { showPg('pgList'); renderList(); };
+
+// ── LIST ──
+function renderList() {
+  const el = document.getElementById('cList');
+  document.getElementById('cCount').textContent = `${cards.length} card${cards.length!==1?'s':''}`;
+  if (!cards.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-ico">📭</div><p>No cards yet.<br>Hit <strong>+ Add</strong> to start.</p></div>`;
+    return;
+  }
+  el.innerHTML = cards.map((c, i) => {
+    const frontPreview = c.front.type === 'text'
+      ? `<span class="crow-label">${esc(c.front.value.slice(0,40)) || '(empty)'}</span>`
+      : `<img class="crow-thumb" src="${c.front.value}" alt=""><span class="crow-label" style="color:var(--text2);font-size:11px;">(image)</span>`;
+    return `
+      <div class="crow">
+        <span class="crow-num">${i+1}</span>
+        <div class="crow-prev" onclick="startStudy([${i}])">${frontPreview}</div>
+        <div class="crow-acts">
+          <button class="btn btn-ic" onclick="openEdit(${i}, null)">✏️</button>
+          <button class="btn btn-del" onclick="delCard(${i})">✕</button>
+        </div>
+      </div>
+      <div class="add-btn-row">
+        <button class="add-inline" onclick="openEdit(null,${i+1})" title="Add card here">+</button>
+      </div>`;
+  }).join('');
+}
+
+function delCard(i) {
+  if (!confirm('Delete this card?')) return;
+  cards.splice(i, 1); save(); renderList();
+}
+
+document.getElementById('btnStudyAll').onclick = () => { if (cards.length) startStudy(cards.map((_,i)=>i)); };
+document.getElementById('btnShuffle').onclick = () => {
+  if (!cards.length) return;
+  const a = cards.map((_,i)=>i);
+  for (let i=a.length-1;i>0;i--) { const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+  startStudy(a);
+};
+
+// ── EDIT ──
+function openEdit(idx, at) {
+  editId = idx; insertAt = at;
+  document.getElementById('editTtl').textContent = idx === null ? 'New Card' : 'Edit Card';
+
+  if (idx !== null) {
+    const c = cards[idx];
+    initFace('f', c.front.type, c.front.value);
+    initFace('b', c.back.type,  c.back.value);
+  } else {
+    initFace('f', 'text', '');
+    initFace('b', 'text', '');
+  }
+  showPg('pgEdit');
+}
+
+function initFace(face, type, value) {
+  if (face === 'f') { fType = type; fImgData = type === 'image' ? value : ''; }
+  else              { bType = type; bImgData = type === 'image' ? value : ''; }
+
+  document.getElementById(face+'ToggleText').classList.toggle('active', type === 'text');
+  document.getElementById(face+'ToggleImg').classList.toggle('active',  type === 'image');
+  renderFaceInput(face, type, value);
+}
+
+function setFaceType(face, type) {
+  if (face === 'f') fType = type; else bType = type;
+  document.getElementById(face+'ToggleText').classList.toggle('active', type === 'text');
+  document.getElementById(face+'ToggleImg').classList.toggle('active',  type === 'image');
+  const existing = face === 'f' ? (type==='image'?fImgData:'') : (type==='image'?bImgData:'');
+  renderFaceInput(face, type, existing);
+}
+
+function renderFaceInput(face, type, value) {
+  const el = document.getElementById(face + 'Input');
+  if (type === 'text') {
+    el.innerHTML = `<textarea class="face-textarea" id="${face}Text" placeholder="Enter text...">${esc(value)}</textarea>`;
+  } else {
+    el.innerHTML = `<div class="img-area" id="${face}ImgArea">
+      <input type="file" accept="image/*" onchange="onImg(this,'${face}')">
+      ${value
+        ? `<img class="img-prev" src="${value}">
+           <button class="img-rm" onclick="clearImg('${face}',event)">remove</button>`
+        : `<span style="font-size:22px;">📷</span><div class="img-hint">tap to upload</div>`}
+    </div>`;
+  }
+}
+
+function onImg(input, face) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const data = e.target.result;
+    if (face === 'f') fImgData = data; else bImgData = data;
+    renderFaceInput(face, 'image', data);
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearImg(face, e) {
+  e.stopPropagation();
+  if (face === 'f') fImgData = ''; else bImgData = '';
+  renderFaceInput(face, 'image', '');
+}
+
+function getFaceData(face) {
+  const type = face === 'f' ? fType : bType;
+  let value = '';
+  if (type === 'text') {
+    value = document.getElementById(face + 'Text')?.value || '';
+  } else {
+    value = face === 'f' ? fImgData : bImgData;
+  }
+  return { type, value };
+}
+
+document.getElementById('saveCard').onclick = () => {
+  const front = getFaceData('f');
+  const back  = getFaceData('b');
+  if (!front.value && !back.value) return alert('Add some content!');
+  const card = { front, back };
+  if (editId === null) {
+    const at = insertAt !== null ? insertAt : cards.length;
+    cards.splice(at, 0, card);
+    insertAt = null;
+  } else {
+    cards[editId] = card;
+  }
+  save(); showPg('pgList'); renderList();
+};
+
+// ── STUDY ──
+function startStudy(idxArr) {
+  deck = idxArr; di = 0;
+  document.getElementById('result').classList.remove('show');
+  document.getElementById('studyWrap').style.display = '';
+  document.getElementById('flipCard').classList.remove('flipped');
+  showPg('pgStudy'); renderCard();
+}
+
+function renderCard() {
+  if (di >= deck.length) { showResult(); return; }
+  const c = cards[deck[di]];
+  document.getElementById('progTxt').textContent = `${di+1} / ${deck.length}`;
+  document.getElementById('progFill').style.width = `${((di+1)/deck.length)*100}%`;
+  document.getElementById('flipCard').classList.remove('flipped');
+  document.getElementById('sFront').innerHTML = renderFace(c.front);
+  document.getElementById('sBack').innerHTML  = renderFace(c.back);
+  document.getElementById('prevBtn').disabled = di === 0;
+  document.getElementById('nextBtn').textContent = di < deck.length-1 ? 'Next →' : 'Finish ✓';
+}
+
+function renderFace(face) {
+  if (face.type === 'image') return `<img class="face-img" src="${face.value}" alt="">`;
+  return `<div class="face-text">${esc(face.value)}</div>`;
+}
+
+function flipCard() { document.getElementById('flipCard').classList.toggle('flipped'); }
+
+document.getElementById('nextBtn').onclick = () => { di++; di >= deck.length ? showResult() : renderCard(); };
+document.getElementById('prevBtn').onclick = () => { if (di>0){ di--; renderCard(); } };
+
+function showResult() {
+  document.getElementById('studyWrap').style.display = 'none';
+  document.getElementById('result').classList.add('show');
+  document.getElementById('resultSub').textContent = `${deck.length} cards reviewed`;
+}
+document.getElementById('restartBtn').onclick = () => {
+  di = 0;
+  document.getElementById('result').classList.remove('show');
+  document.getElementById('studyWrap').style.display = '';
+  renderCard();
+};
+
+// ── INIT ──
+renderList();
+</script>
+</body>
+</html>
